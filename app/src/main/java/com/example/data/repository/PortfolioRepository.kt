@@ -76,49 +76,53 @@ class PortfolioRepository(
 
     suspend fun isDatabaseEmpty(): Boolean {
         return withContext(Dispatchers.IO) {
-            portfolioDao.getCurrentHoldings().isEmpty()
+            val holdings = portfolioDao.getCurrentHoldings()
+            holdings.isEmpty() || holdings.any { it.ticker == "AAPL" || it.ticker == "MSFT" || it.ticker == "GOOGL" }
         }
     }
 
     suspend fun loadDemoData() {
         withContext(Dispatchers.IO) {
             val demoHoldings = listOf(
-                CurrentHolding("AAPL", "Apple Inc.", 50.0, 170.0, 185.50, 9275.0, 775.0, 9.12),
-                CurrentHolding("MSFT", "Microsoft Corp.", 30.0, 320.0, 350.20, 10506.0, 906.0, 9.44),
-                CurrentHolding("GOOGL", "Alphabet Inc.", 40.0, 115.0, 130.40, 5216.0, 616.0, 13.39),
-                CurrentHolding("AMZN", "Amazon.com Inc.", 25.0, 120.0, 135.80, 3395.0, 395.0, 13.17)
+                CurrentHolding("NABIL", "Nabil Bank Limited", 200.0, 240.0, 255.50, 51100.0, 3100.0, 6.46),
+                CurrentHolding("NICA", "NIC Asia Bank Limited", 150.0, 340.0, 325.20, 48780.0, -2220.0, -4.35),
+                CurrentHolding("GBIME", "Global IME Bank Limited", 500.0, 175.0, 182.40, 91200.0, 3700.0, 4.23),
+                CurrentHolding("EBL", "Everest Bank Limited", 100.0, 440.0, 455.80, 45580.0, 1580.0, 3.59),
+                CurrentHolding("SCB", "Standard Chartered Bank Nepal Limited", 100.0, 500.0, 524.30, 52430.0, 2430.0, 4.86)
             )
 
             val demoStocks = listOf(
-                StockItem("AAPL", "Apple Inc.", 185.50, 2.50, 1.36, "Technology", 52000000),
-                StockItem("MSFT", "Microsoft Corp.", 350.20, 4.10, 1.18, "Technology", 23000000),
-                StockItem("GOOGL", "Alphabet Inc.", 130.40, -0.80, -0.61, "Technology", 28000000),
-                StockItem("AMZN", "Amazon.com Inc.", 135.80, 1.20, 0.89, "Retail", 31000000),
-                StockItem("TSLA", "Tesla Inc.", 245.30, -5.40, -2.15, "Automotive", 85000000),
-                StockItem("NVDA", "NVIDIA Corp.", 450.10, 12.30, 2.81, "Semiconductors", 41000000),
-                StockItem("NFLX", "Netflix Inc.", 410.50, 3.20, 0.79, "Entertainment", 12000000),
-                StockItem("AMD", "Advanced Micro Devices", 112.40, -1.10, -0.97, "Semiconductors", 38000000)
+                StockItem("NABIL", "Nabil Bank Limited", 255.50, 3.80, 1.51, "Commercial Banks", 5200000),
+                StockItem("NICA", "NIC Asia Bank Limited", 325.20, -1.60, -0.49, "Commercial Banks", 2300000),
+                StockItem("GBIME", "Global IME Bank Limited", 182.40, 1.40, 0.77, "Commercial Banks", 2800000),
+                StockItem("EBL", "Everest Bank Limited", 455.80, 5.40, 1.20, "Commercial Banks", 3100000),
+                StockItem("SCB", "Standard Chartered Bank Nepal Limited", 524.30, 11.80, 2.30, "Commercial Banks", 1200000),
+                StockItem("NRIC", "Nepal Reinsurance Company Limited", 650.00, -7.20, -1.10, "Reinsurance", 850000),
+                StockItem("CIT", "Citizen Investment Trust", 2200.00, 32.50, 1.50, "Others", 410000),
+                StockItem("NLIC", "Nepal Life Insurance Company Limited", 780.00, -3.10, -0.40, "Life Insurance", 1200000),
+                StockItem("HIDCL", "Hydroelectricity Investment and Development Company Limited", 170.00, 0.80, 0.47, "Hydro Power", 3800000),
+                StockItem("AHPC", "Arun Valley Hydropower Development Company Limited", 210.00, -3.80, -1.78, "Hydro Power", 950000)
             )
 
             val demoHistory = listOf(
-                PortfolioHistory(date = "2026-07-10", value = 24500.0),
-                PortfolioHistory(date = "2026-07-11", value = 24650.0),
-                PortfolioHistory(date = "2026-07-12", value = 24400.0),
-                PortfolioHistory(date = "2026-07-13", value = 24900.0),
-                PortfolioHistory(date = "2026-07-14", value = 25150.0),
-                PortfolioHistory(date = "2026-07-15", value = 25420.0),
-                PortfolioHistory(date = "2026-07-16", value = 28392.0)
+                PortfolioHistory(date = "2026-07-10", value = 275000.0),
+                PortfolioHistory(date = "2026-07-11", value = 276500.0),
+                PortfolioHistory(date = "2026-07-12", value = 274000.0),
+                PortfolioHistory(date = "2026-07-13", value = 279000.0),
+                PortfolioHistory(date = "2026-07-14", value = 281500.0),
+                PortfolioHistory(date = "2026-07-15", value = 284200.0),
+                PortfolioHistory(date = "2026-07-16", value = 289090.0)
             )
 
             val demoWatch = listOf(
-                WatchStock("TSLA", "Tesla Inc.", 220.0, 245.30, "Wait for correction to buy"),
-                WatchStock("NVDA", "NVIDIA Corp.", 420.0, 450.10, "Leader in AI accelerators"),
-                WatchStock("AMD", "Advanced Micro Devices", 100.0, 112.40, "Value play in semiconductors")
+                WatchStock("NRIC", "Nepal Reinsurance Company Limited", 600.0, 650.00, "Wait for bounce support"),
+                WatchStock("CIT", "Citizen Investment Trust", 2100.0, 2200.00, "Blue chip long term hold"),
+                WatchStock("NLIC", "Nepal Life Insurance Company Limited", 750.0, 780.00, "Watch insurance sector rally")
             )
 
             portfolioDao.refreshAll(demoHoldings, demoStocks, demoHistory, demoWatch)
-            saveE5Value(25700.0)
-            saveO5Value(2692.0)
+            saveE5Value(289090.0)
+            saveO5Value(2677.54)
             saveLastSyncTime("Loaded Demo Data")
             updateWidget()
         }

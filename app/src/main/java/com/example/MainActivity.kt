@@ -16,11 +16,13 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.List
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.Newspaper
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -45,10 +47,13 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.PortfolioViewModel
 import com.example.ui.screens.DashboardScreen
+import com.example.ui.screens.CandlestickChartDialog
+import androidx.compose.runtime.collectAsState
 import com.example.ui.screens.HistoryScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.StockListScreen
 import com.example.ui.screens.WatchListScreen
+import com.example.ui.screens.NewsScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.SlateBg
 import com.example.ui.theme.SlateBorder
@@ -65,7 +70,7 @@ enum class PortfolioTab(
     DASHBOARD("Portfolio", Icons.Filled.Dashboard, Icons.Outlined.Dashboard, "tab_dashboard"),
     STOCK_LIST("Stock List", Icons.Filled.List, Icons.Outlined.List, "tab_stocks"),
     WATCHLIST("Watchlist", Icons.Filled.Star, Icons.Outlined.Star, "tab_watch"),
-    HISTORY("History", Icons.Filled.History, Icons.Outlined.History, "tab_history"),
+    NEWS("News", Icons.Filled.Newspaper, Icons.Outlined.Newspaper, "tab_news"),
     SETTINGS("Settings", Icons.Filled.Settings, Icons.Outlined.Settings, "tab_settings")
 }
 
@@ -86,6 +91,21 @@ class MainActivity : ComponentActivity() {
 fun MainLayout() {
     val viewModel: PortfolioViewModel = viewModel()
     var currentTab by remember { mutableStateOf(PortfolioTab.DASHBOARD) }
+
+    val selectedSymbol by viewModel.selectedSymbol.collectAsState()
+    val candleData by viewModel.candleData.collectAsState()
+    val isCandleLoading by viewModel.isCandleLoading.collectAsState()
+    val candleError by viewModel.candleError.collectAsState()
+
+    if (selectedSymbol != null) {
+        CandlestickChartDialog(
+            symbol = selectedSymbol!!,
+            candles = candleData,
+            isLoading = isCandleLoading,
+            error = candleError,
+            onDismiss = { viewModel.selectSymbol(null) }
+        )
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -154,7 +174,7 @@ fun MainLayout() {
                 PortfolioTab.DASHBOARD -> DashboardScreen(viewModel = viewModel)
                 PortfolioTab.STOCK_LIST -> StockListScreen(viewModel = viewModel)
                 PortfolioTab.WATCHLIST -> WatchListScreen(viewModel = viewModel)
-                PortfolioTab.HISTORY -> HistoryScreen(viewModel = viewModel)
+                PortfolioTab.NEWS -> NewsScreen(viewModel = viewModel)
                 PortfolioTab.SETTINGS -> SettingsScreen(viewModel = viewModel)
             }
         }

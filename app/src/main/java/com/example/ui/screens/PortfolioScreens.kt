@@ -1843,10 +1843,16 @@ fun SettingsScreen(
     val context = LocalContext.current
 
     val gso = remember {
-        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+        val builder = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
             .requestScopes(Scope("https://www.googleapis.com/auth/spreadsheets.readonly"))
-            .build()
+        
+        val webClientIdResId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
+        if (webClientIdResId != 0) {
+            val webClientId = context.getString(webClientIdResId)
+            builder.requestIdToken(webClientId)
+        }
+        builder.build()
     }
     val googleSignInClient = remember {
         GoogleSignIn.getClient(context, gso)

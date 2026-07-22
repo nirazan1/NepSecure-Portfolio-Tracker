@@ -1,21 +1,40 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# NepSecure Portfolio Tracker
 
-# Run and deploy your AI Studio app
+NepSecure Portfolio Tracker is an advanced Android application for tracking your share portfolio and market index data directly synced with your Google Sheets.
 
-This contains everything you need to run your app locally.
+---
 
-View your app in AI Studio: https://ai.studio/apps/e1fdecc8-3033-4d54-aa2b-10751b3eedac
+## 📲 Installation Guide
 
-## Run Locally
+Follow these steps to install the application on your Android device:
 
-**Prerequisites:**  [Android Studio](https://developer.android.com/studio)
+1.  **Download the APK:**
+    Download the compiled APK directly from the project root:
+    👉 **[Download NepSecure Portfolio Tracker.apk](./NepSecure%20Portfolio%20Tracker.apk)**
 
+2.  **Enable Unknown Sources:**
+    *   On your Android device, go to **Settings** > **Security** (or **Apps & Notifications** > **Special App Access**).
+    *   Enable **Install Unknown Apps** or **Allow from this source** for your browser or file manager.
 
-1. Open Android Studio
-2. Select **Open** and choose the directory containing this project
+3.  **Install the APK:**
+    *   Open your device's **Downloads** folder or file manager.
+    *   Tap on `NepSecure Portfolio Tracker.apk` and follow the prompts to complete the installation.
+
+4.  **Set Up Spreadsheet Sync:**
+    *   Open the app and navigate to the **Settings** tab.
+    *   Input your Google Spreadsheet ID (found in the URL of your portfolio sheet).
+    *   Click **Fetch & Refresh Prices** to perform the initial sync.
+
+---
+
+## 💻 Run and Deploy Locally
+
+To run the project locally in development mode:
+
+**Prerequisites:** [Android Studio](https://developer.android.com/studio)
+
+1. Open Android Studio.
+2. Select **Open** and choose this project directory.
 3. Allow Android Studio to fix any incompatibilities as it imports the project.
-4. Create a file named `.env` in the project directory and set `GEMINI_API_KEY` in that file to your Gemini API key (see `.env.example` for an example)
-5. Remove this line from the app's `build.gradle.kts` file: `signingConfig = signingConfigs.getByName("debugConfig")`
-6. Run the app on an emulator or physical device
+4. Create a file named `.env` in the project directory and set `GEMINI_API_KEY` (see `.env.example` for details).
+5. Run the app on an emulator or physical device.

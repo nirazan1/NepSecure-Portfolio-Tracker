@@ -264,11 +264,16 @@ object GoogleSheetsClient {
         if (rows.isEmpty()) return emptyList()
 
         // Extract E5 (row index 4, col index 4) and O5 (row index 4, col index 14)
-        // Extract A1 (NEPSE status) and A2 (date/time) from the sheet
+        // Extract A1 (NEPSE status) and A2 (date/time) from the sheet if valid
         val a1Raw = rows.getOrNull(0)?.getOrNull(0)?.replace("\"", "")?.trim()
         val a2Raw = rows.getOrNull(1)?.getOrNull(0)?.replace("\"", "")?.trim()
-        nepseStatus = if (!a1Raw.isNullOrBlank()) a1Raw else null
-        nepseDateTime = if (!a2Raw.isNullOrBlank()) a2Raw else null
+
+        val isHeaderA1 = a1Raw != null && (a1Raw.equals("Symbol", ignoreCase = true) || a1Raw.equals("Ticker", ignoreCase = true) || a1Raw.equals("LTP", ignoreCase = true) || a1Raw.startsWith("NEPSE", ignoreCase = false) && a1Raw.length > 50)
+        
+        nepseStatus = if (!a1Raw.isNullOrBlank() && !isHeaderA1 && (a1Raw.contains("OPEN", ignoreCase = true) || a1Raw.contains("CLOSED", ignoreCase = true) || a1Raw.contains("MARKET", ignoreCase = true))) a1Raw else null
+        
+        val isDateA2 = a2Raw != null && (a2Raw.matches(Regex(".*\\d{4}.*")) || a2Raw.contains("NST", ignoreCase = true) || a2Raw.contains("AM", ignoreCase = true) || a2Raw.contains("PM", ignoreCase = true))
+        nepseDateTime = if (!a2Raw.isNullOrBlank() && isDateA2) a2Raw else null
         Log.d("SheetsClient", "Extracted A1 (status): $nepseStatus, A2 (datetime): $nepseDateTime")
 
         val row5 = rows.getOrNull(4)
@@ -289,15 +294,18 @@ object GoogleSheetsClient {
 
         // Scan all rows to find header positions dynamically
         for (row in rows) {
-            val lowercaseRow = row.map { it.lowercase().replace(" ", "").replace("_", "").replace("\"", "") }
+            val lowercaseRow = row.map { it.lowercase().replace(" ", "").replace("_", "").replace("\"", "").replace("-", "") }
             lowercaseRow.forEachIndexed { index, cell ->
                 if (cell == "symbol" || cell == "ticker") tickerIdx = index
-                if (cell == "quantity" || cell == "qty" || cell == "shares") sharesIdx = index
+                if (cell == "quantity" || cell == "qty" || cell == "shares" || cell == "units") sharesIdx = index
                 if (cell == "wacc" || cell == "avgprice" || cell == "averageprice" || cell == "costprice") avgPriceIdx = index
-                if (cell == "marketprice" || cell == "currentprice" || cell == "ltp") currentPriceIdx = index
-                if (cell == "portfoliovalue" || cell == "marketvalue") marketValueIdx = index
-                if (cell == "currentprofit/loss" || (cell == "profit/loss" && gainLossIdx == 11)) gainLossIdx = index
-                if (cell == "profit/loss%" || cell == "gainloss%") gainLossPercentIdx = index
+                if (cell == "marketprice" || cell == "currentprice" || cell == "ltp" || cell == "price") currentPriceIdx = index
+                if (cell == "portfoliovalue" || cell == "marketvalue" || cell == "value") marketValueIdx = index
+                if (cell.contains("currentprofit/loss") || cell.contains("profit/loss") || cell.contains("gainloss") || cell == "gain/loss") {
+                    if (cell.contains("%") || cell.contains("pct")) gainLossPercentIdx = index
+                    else gainLossIdx = index
+                }
+                if (cell == "profit/loss%" || cell == "gainloss%" || cell == "gain/loss%") gainLossPercentIdx = index
             }
         }
 

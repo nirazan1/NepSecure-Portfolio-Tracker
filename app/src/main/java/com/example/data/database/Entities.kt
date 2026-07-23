@@ -12,7 +12,9 @@ data class CurrentHolding(
     val currentPrice: Double,
     val marketValue: Double,
     val gainLoss: Double,
-    val gainLossPercent: Double
+    val gainLossPercent: Double,
+    val totalInvestment: Double = 0.0,
+    val sales: Double = 0.0
 )
 
 @Entity(tableName = "stock_list")

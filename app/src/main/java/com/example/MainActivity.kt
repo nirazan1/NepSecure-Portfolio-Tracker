@@ -101,6 +101,46 @@ fun MainLayout() {
     val isCandleLoading by viewModel.isCandleLoading.collectAsState()
     val candleError by viewModel.candleError.collectAsState()
 
+    val googleAccountEmail by viewModel.googleAccountEmail.collectAsState()
+    var showOnboardingDialog by remember { mutableStateOf(googleAccountEmail == null) }
+
+    if (showOnboardingDialog && googleAccountEmail == null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showOnboardingDialog = false },
+            title = {
+                Text(
+                    text = "Welcome to NepSecure Portfolio!",
+                    style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = SlateTextPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = "Link your Google Account to automatically create and auto-link your personal share portfolio spreadsheet in your Google Drive.",
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                    color = SlateTextSecondary
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.Button(
+                    onClick = {
+                        showOnboardingDialog = false
+                        currentTab = PortfolioTab.SETTINGS
+                    },
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = com.example.ui.theme.GrowBlue)
+                ) {
+                    Text("Link Google Account", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showOnboardingDialog = false }) {
+                    Text("Explore Market First", color = SlateTextSecondary)
+                }
+            }
+        )
+    }
+
     if (selectedSymbol != null) {
         CandlestickChartDialog(
             symbol = selectedSymbol!!,

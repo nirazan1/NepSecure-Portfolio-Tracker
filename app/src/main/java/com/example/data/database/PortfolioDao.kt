@@ -16,6 +16,12 @@ interface PortfolioDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCurrentHoldings(holdings: List<CurrentHolding>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertHolding(holding: CurrentHolding)
+
+    @Query("DELETE FROM current_holdings WHERE ticker = :ticker")
+    suspend fun deleteHolding(ticker: String)
+
     @Query("DELETE FROM current_holdings")
     suspend fun clearCurrentHoldings()
 

@@ -4,6 +4,14 @@ NepSecure Portfolio Tracker is an advanced Android application for tracking your
 
 ---
 
+## 📊 Public Master Data Sheet
+The centralized public Master Data Sheet provides live NEPSE stock prices (`stocks` tab) and market holiday schedules (`market holiday` tab) for all users:
+
+*   **Public Master Sheet ID:** `1dNE3DhX2d0DGcP8GFpe2bSwHAXZvOt7l4C6QSPVffbc`
+*   **Public Master Sheet Link:** [NepSecure Master Data Sheet](https://docs.google.com/spreadsheets/d/1dNE3DhX2d0DGcP8GFpe2bSwHAXZvOt7l4C6QSPVffbc/edit)
+
+---
+
 ## 📲 Installation Guide
 
 Follow these steps to install the application on your Android device:
@@ -21,8 +29,9 @@ Follow these steps to install the application on your Android device:
     *   Tap on `NepSecure Portfolio Tracker.apk` and follow the prompts to complete the installation.
 
 4.  **Set Up Spreadsheet Sync:**
-    *   Open the app and navigate to the **Settings** tab.
-    *   Input your Google Spreadsheet ID (found in the URL of your portfolio sheet).
+    *   Click **[Make a Copy of Portfolio Template Sheet](https://docs.google.com/spreadsheets/d/1dNE3DhX2d0DGcP8GFpe2bSwHAXZvOt7l4C6QSPVffbc/copy)** to create your personal portfolio sheet in your Google Drive with 1 click.
+    *   Open the NepSecure app and navigate to the **Settings** tab.
+    *   Input your Google Spreadsheet ID (found in the URL of your new portfolio sheet).
     *   Click **Fetch & Refresh Prices** to perform the initial sync.
 
 ---

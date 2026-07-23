@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -111,6 +113,10 @@ fun DashboardScreen(
     var holdingsSortOrderDesc by remember { mutableStateOf(true) }
     var holdingsFilterPerformance by remember { mutableStateOf("All") }
     var holdingsFilterExpanded by remember { mutableStateOf(false) }
+
+    var showAddStockDialog by remember { mutableStateOf(false) }
+    var editingHolding by remember { mutableStateOf<CurrentHolding?>(null) }
+    var stockToDelete by remember { mutableStateOf<CurrentHolding?>(null) }
 
     val filteredHoldings = remember(holdings, stocks, holdingsSearchQuery, holdingsSortBy, holdingsSortOrderDesc, holdingsFilterPerformance) {
         var result = holdings.filter {
@@ -918,8 +924,20 @@ fun DashboardScreen(
                     
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        Button(
+                            onClick = { showAddStockDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = GrowBlue),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.height(30.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Add Stock", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
                         Text(
                             text = "${filteredHoldings.size} of ${holdings.size}",
                             fontSize = 12.sp,
@@ -1104,19 +1122,175 @@ fun DashboardScreen(
                 HoldingRowItem(
                     holding = holding,
                     stockItem = matchingStock,
-                    onTickerClick = { symbol -> viewModel.selectSymbol(symbol) }
+                    onTickerClick = { symbol -> viewModel.selectSymbol(symbol) },
+                    onEditClick = { h -> editingHolding = h },
+                    onDeleteClick = { h -> stockToDelete = h }
                 )
             }
         }
     }
     } // end PullToRefreshBox
+
+    if (showAddStockDialog || editingHolding != null) {
+        AddEditStockDialog(
+            initialHolding = editingHolding,
+            onDismiss = {
+                showAddStockDialog = false
+                editingHolding = null
+            },
+            onSave = { symbol, shares, totalInv, sales, wacc ->
+                viewModel.addOrUpdateHolding(symbol, shares, totalInv, sales, wacc)
+                showAddStockDialog = false
+                editingHolding = null
+            }
+        )
+    }
+
+    if (stockToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { stockToDelete = null },
+            title = { Text("Delete Stock Holding", fontWeight = FontWeight.Bold, color = LossRed) },
+            text = { Text("Are you sure you want to remove ${stockToDelete?.ticker} from your portfolio?", color = SlateTextPrimary) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteHolding(stockToDelete!!.ticker)
+                        stockToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = LossRed)
+                ) {
+                    Text("Delete", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { stockToDelete = null }) {
+                    Text("Cancel", color = SlateTextSecondary)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun AddEditStockDialog(
+    initialHolding: CurrentHolding? = null,
+    onDismiss: () -> Unit,
+    onSave: (symbol: String, shares: Double, totalInvestment: Double, sales: Double, wacc: Double) -> Unit
+) {
+    var symbol by remember { mutableStateOf(initialHolding?.ticker ?: "") }
+    var sharesStr by remember { mutableStateOf(initialHolding?.shares?.let { if (it > 0) it.toString() else "" } ?: "") }
+    var totalInvStr by remember { mutableStateOf(initialHolding?.totalInvestment?.let { if (it > 0) it.toString() else "" } ?: "") }
+    var salesStr by remember { mutableStateOf(initialHolding?.sales?.let { if (it > 0) it.toString() else "" } ?: "") }
+    var waccStr by remember { mutableStateOf(initialHolding?.avgPrice?.let { if (it > 0) it.toString() else "" } ?: "") }
+
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = if (initialHolding == null) "Add Stock Holding" else "Edit Holding (${initialHolding.ticker})",
+                fontWeight = FontWeight.Bold,
+                color = SlateTextPrimary
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (errorMsg != null) {
+                    Text(errorMsg!!, color = LossRed, fontSize = 12.sp)
+                }
+
+                OutlinedTextField(
+                    value = symbol,
+                    onValueChange = { symbol = it.uppercase() },
+                    label = { Text("Symbol (e.g. NABIL, NICA)", color = SlateTextSecondary) },
+                    enabled = initialHolding == null,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = sharesStr,
+                    onValueChange = { sharesStr = it },
+                    label = { Text("Quantity (Shares / Units)", color = SlateTextSecondary) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = totalInvStr,
+                    onValueChange = { totalInvStr = it },
+                    label = { Text("Total Investment (Rs)", color = SlateTextSecondary) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = salesStr,
+                    onValueChange = { salesStr = it },
+                    label = { Text("Sales or Dividend Earned (Rs)", color = SlateTextSecondary) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = waccStr,
+                    onValueChange = { waccStr = it },
+                    label = { Text("WACC (Weighted Avg Cost per Share)", color = SlateTextSecondary) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (symbol.isBlank()) {
+                        errorMsg = "Please enter a stock symbol."
+                        return@Button
+                    }
+                    val shares = sharesStr.toDoubleOrNull() ?: 0.0
+                    val totalInv = totalInvStr.toDoubleOrNull() ?: 0.0
+                    val sales = salesStr.toDoubleOrNull() ?: 0.0
+                    val wacc = waccStr.toDoubleOrNull() ?: 0.0
+
+                    if (shares <= 0) {
+                        errorMsg = "Quantity must be greater than 0."
+                        return@Button
+                    }
+
+                    onSave(symbol.trim(), shares, totalInv, sales, wacc)
+                    onDismiss()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = GrowBlue)
+            ) {
+                Text(if (initialHolding == null) "Add Holding" else "Save Changes", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = SlateTextSecondary)
+            }
+        }
+    )
 }
 
 @Composable
 fun HoldingRowItem(
     holding: CurrentHolding,
     stockItem: StockItem?,
-    onTickerClick: (String) -> Unit
+    onTickerClick: (String) -> Unit,
+    onEditClick: (CurrentHolding) -> Unit,
+    onDeleteClick: (CurrentHolding) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -1198,14 +1372,14 @@ fun HoldingRowItem(
                         val todayColor = if (todayIsGain) GainGreen else LossRed
                         Text(
                             text = "Today: ${if (todayIsGain) "+" else ""}${moneyFormat.format(todayChange)} (${if (stockItem.changePercent >= 0) "+" else ""}${String.format("%.2f%%", stockItem.changePercent)})",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
                             color = todayColor
                         )
                     } else {
                         Text(
-                            text = "Market Price",
-                            fontSize = 10.sp,
+                            text = "Valuation",
+                            fontSize = 11.sp,
                             color = SlateTextSecondary
                         )
                     }
@@ -1216,7 +1390,6 @@ fun HoldingRowItem(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(SlateBg.copy(alpha = 0.4f))
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
                     HorizontalDivider(color = SlateBorder.copy(alpha = 0.6f), thickness = 1.dp)
@@ -1309,6 +1482,38 @@ fun HoldingRowItem(
                                 Column(modifier = Modifier.weight(1f)) {
                                     GridItem(label = "Current Value", value = moneyFormat.format(holding.marketValue))
                                 }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedButton(
+                                onClick = { onEditClick(holding) },
+                                modifier = Modifier.weight(1f).height(38.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, GrowBlue),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = GrowBlue)
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Edit Holding", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            OutlinedButton(
+                                onClick = { onDeleteClick(holding) },
+                                modifier = Modifier.weight(1f).height(38.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, LossRed),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = LossRed)
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Delete", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -2822,6 +3027,7 @@ fun SettingsScreen(
 
 
         // Google Authentication Card
+        // Google Account & Portfolio Sheet Card
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -2835,7 +3041,7 @@ fun SettingsScreen(
                         .padding(18.dp)
                 ) {
                     Text(
-                        text = "GOOGLE SECURITY AUTHENTICATION",
+                        text = "GOOGLE PORTFOLIO ACCOUNT",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = SlateTextSecondary,
@@ -2865,7 +3071,7 @@ fun SettingsScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        text = "Google Account connected",
+                                        text = "Google Account Connected",
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = SlateTextPrimary
@@ -2878,7 +3084,7 @@ fun SettingsScreen(
                                             .padding(horizontal = 4.dp, vertical = 2.dp)
                                     ) {
                                         Text(
-                                            text = "Active",
+                                            text = "Auto-Linked",
                                             fontSize = 9.sp,
                                             fontWeight = FontWeight.ExtraBold,
                                             color = GainGreen
@@ -2895,13 +3101,29 @@ fun SettingsScreen(
 
                         Spacer(modifier = Modifier.height(14.dp))
 
-                        Text(
-                            text = "Only authorized users can sync this spreadsheet. Since you are authenticated, your sync requests will include your Google security credentials.",
-                            fontSize = 11.sp,
-                            color = SlateTextSecondary
-                        )
+                        Button(
+                            onClick = { viewModel.refreshFromSheets() },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = GrowBlue),
+                            enabled = syncState !is SyncState.Syncing
+                        ) {
+                            if (syncState is SyncState.Syncing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Syncing Portfolio...")
+                            } else {
+                                Icon(Icons.Default.CloudSync, contentDescription = "Sync")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Sync & Refresh Portfolio", fontWeight = FontWeight.Bold)
+                            }
+                        }
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         OutlinedButton(
                             onClick = {
@@ -2911,21 +3133,22 @@ fun SettingsScreen(
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(48.dp),
+                                .height(44.dp),
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = LossRed),
                             border = BorderStroke(1.dp, SlateBorder)
                         ) {
-                            Icon(Icons.Default.Logout, contentDescription = "Sign Out", modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Logout, contentDescription = "Sign Out", modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Disconnect Google Account", fontWeight = FontWeight.Bold)
+                            Text("Disconnect Google Account", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     } else {
                         // Signed Out State
                         Text(
-                            text = "Connect your Google Account to securely sync from restricted/private spreadsheets that only you can access.",
+                            text = "Link your Google Account to automatically create and sync your personal share portfolio spreadsheet in your Google Drive.",
                             fontSize = 12.sp,
-                            color = SlateTextSecondary
+                            color = SlateTextSecondary,
+                            lineHeight = 16.sp
                         )
 
                         Spacer(modifier = Modifier.height(14.dp))
@@ -2953,83 +3176,14 @@ fun SettingsScreen(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Sign in with Google", color = SlateBg, fontWeight = FontWeight.ExtraBold)
+                                Text("Link Google Account & Auto-Create Sheet", color = SlateBg, fontWeight = FontWeight.ExtraBold)
                             }
                         }
                     }
-                }
-            }
-        }
-
-        // Connection Card
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = SlateSurface),
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, SlateBorder)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp)
-                ) {
-                    Text(
-                        text = "GOOGLE SPREADSHEET CONFIG",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = SlateTextSecondary,
-                        letterSpacing = 1.2.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    OutlinedTextField(
-                        value = spreadsheetId,
-                        onValueChange = { viewModel.updateSpreadsheetId(it) },
-                        label = { Text("Google Spreadsheet ID", color = SlateTextSecondary) },
-                        placeholder = { Text("Enter ID from Sheets URL...", color = SlateTextSecondary) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = SlateTextPrimary,
-                            unfocusedTextColor = SlateTextPrimary,
-                            focusedContainerColor = SlateBg,
-                            unfocusedContainerColor = SlateBg,
-                            focusedBorderColor = GrowBlue,
-                            unfocusedBorderColor = SlateBorder
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Button(
-                        onClick = { viewModel.refreshFromSheets() },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = GrowBlue),
-                        enabled = syncState !is SyncState.Syncing
-                    ) {
-                        if (syncState is SyncState.Syncing) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Syncing Sheets...")
-                        } else {
-                            Icon(Icons.Default.CloudSync, contentDescription = "Sync")
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Fetch & Refresh Prices", fontWeight = FontWeight.Bold)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
 
                     // Sync State Banner
                     AnimatedVisibility(visible = syncState != SyncState.Idle) {
+                        Spacer(modifier = Modifier.height(12.dp))
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -3051,13 +3205,13 @@ fun SettingsScreen(
                                         Icon(Icons.Default.CheckCircle, contentDescription = "Success", tint = GainGreen)
                                         Column {
                                             Text("Sync Completed Successfully!", color = GainGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                            Text("Cached stock prices updated.", color = SlateTextSecondary, fontSize = 11.sp)
+                                            Text("Portfolio updated with latest prices.", color = SlateTextSecondary, fontSize = 11.sp)
                                         }
                                     }
                                     is SyncState.Error -> {
                                         Icon(Icons.Default.Error, contentDescription = "Error", tint = LossRed)
                                         Column {
-                                            Text("Sync Error", color = LossRed, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                            Text("Sync Notice", color = LossRed, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                             Text((syncState as SyncState.Error).message, color = SlateTextSecondary, fontSize = 11.sp)
                                         }
                                     }

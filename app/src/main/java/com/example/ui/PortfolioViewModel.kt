@@ -104,11 +104,50 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
     fun updateGoogleAccount(email: String?) {
         _googleAccountEmail.value = email
         repository.saveGoogleAccountEmail(email)
+        if (!email.isNullOrBlank()) {
+            createAndLinkUserPortfolioSheet(email)
+        }
+    }
+
+    fun createAndLinkUserPortfolioSheet(email: String) {
+        viewModelScope.launch {
+            _syncState.value = SyncState.Syncing
+            try {
+                val newSheetId = withContext(Dispatchers.IO) {
+                    repository.createOrLinkUserPortfolioSheet(email)
+                }
+                _spreadsheetId.value = newSheetId
+                repository.saveSpreadsheetId(newSheetId)
+                repository.refreshFromGoogleSheets(newSheetId)
+                _syncState.value = SyncState.Success
+            } catch (e: Exception) {
+                Log.e("ViewModel", "Failed to auto-create portfolio sheet", e)
+                _syncState.value = SyncState.Error(e.message ?: "Sheet creation failed")
+            }
+        }
     }
 
     fun signOutGoogle() {
         _googleAccountEmail.value = null
         repository.saveGoogleAccountEmail(null)
+    }
+
+    fun addOrUpdateHolding(
+        symbol: String,
+        shares: Double,
+        totalInvestment: Double,
+        sales: Double,
+        wacc: Double
+    ) {
+        viewModelScope.launch {
+            repository.addOrUpdateHolding(symbol, shares, totalInvestment, sales, wacc)
+        }
+    }
+
+    fun deleteHolding(ticker: String) {
+        viewModelScope.launch {
+            repository.deleteHolding(ticker)
+        }
     }
 
     private val _nepseIndexValue = MutableStateFlow<Double?>(null)
@@ -218,6 +257,15 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
                     _nepseIndexValue.value = data.last().close
                     _nepseIndexChange.value = 0.0
                     _nepseIndexPercent.value = 0.0
+                }
+                
+                // Dynamic fallback for NEPSE status and Date/Time if null
+                if (_nepseStatus.value.isNullOrBlank()) {
+                    val isOpen = isWithinAutoSyncWindow()
+                    _nepseStatus.value = if (isOpen) "NEPSE MARKET OPEN" else "NEPSE MARKET CLOSED"
+                }
+                if (_nepseDateTime.value.isNullOrBlank() && data.isNotEmpty()) {
+                    _nepseDateTime.value = data.last().date
                 }
             } catch (e: Exception) {
                 Log.e("ViewModel", "Failed to fetch NEPSE index", e)

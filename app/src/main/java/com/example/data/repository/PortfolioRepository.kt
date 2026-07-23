@@ -40,11 +40,23 @@ class PortfolioRepository(
     }
 
     fun getSpreadsheetId(): String {
-        return sharedPrefs.getString("spreadsheet_id", "1mLrFwh9Jbv0WzgaPDemuwKXSyrcMtEOadrA1FR7nDKQ") ?: "1mLrFwh9Jbv0WzgaPDemuwKXSyrcMtEOadrA1FR7nDKQ"
+        return sharedPrefs.getString("spreadsheet_id", "1dNE3DhX2d0DGcP8GFpe2bSwHAXZvOt7l4C6QSPVffbc") ?: "1dNE3DhX2d0DGcP8GFpe2bSwHAXZvOt7l4C6QSPVffbc"
     }
 
     fun saveSpreadsheetId(id: String) {
         sharedPrefs.edit().putString("spreadsheet_id", id.trim()).apply()
+    }
+
+    fun createOrLinkUserPortfolioSheet(email: String): String {
+        val existing = sharedPrefs.getString("user_portfolio_sheet_$email", null)
+        if (!existing.isNullOrBlank()) {
+            saveSpreadsheetId(existing)
+            return existing
+        }
+        val defaultSheetId = "1dNE3DhX2d0DGcP8GFpe2bSwHAXZvOt7l4C6QSPVffbc"
+        sharedPrefs.edit().putString("user_portfolio_sheet_$email", defaultSheetId).apply()
+        saveSpreadsheetId(defaultSheetId)
+        return defaultSheetId
     }
 
     fun getLastSyncTime(): String {
@@ -115,6 +127,47 @@ class PortfolioRepository(
         return withContext(Dispatchers.IO) {
             val holdings = portfolioDao.getCurrentHoldings()
             holdings.isEmpty() || holdings.any { it.ticker == "AAPL" || it.ticker == "MSFT" || it.ticker == "GOOGL" }
+        }
+    }
+
+    suspend fun addOrUpdateHolding(
+        symbol: String,
+        shares: Double,
+        totalInvestment: Double,
+        sales: Double,
+        wacc: Double
+    ) {
+        withContext(Dispatchers.IO) {
+            val upper = symbol.uppercase().trim()
+            val stocks = portfolioDao.getStockList()
+            val matchedStock = stocks.find { it.ticker == upper }
+            val currentPrice = matchedStock?.price ?: (if (wacc > 0) wacc else 100.0)
+            val currentInvestment = if (shares > 0) maxOf(0.0, totalInvestment - sales) else 0.0
+            val marketValue = shares * currentPrice
+            val gainLoss = marketValue - currentInvestment
+            val gainLossPercent = if (currentInvestment > 0) (gainLoss / currentInvestment) * 100.0 else 0.0
+
+            val holding = CurrentHolding(
+                ticker = upper,
+                name = matchedStock?.name ?: upper,
+                shares = shares,
+                avgPrice = wacc,
+                currentPrice = currentPrice,
+                marketValue = marketValue,
+                gainLoss = gainLoss,
+                gainLossPercent = gainLossPercent,
+                totalInvestment = totalInvestment,
+                sales = sales
+            )
+            portfolioDao.insertHolding(holding)
+            updateWidget()
+        }
+    }
+
+    suspend fun deleteHolding(ticker: String) {
+        withContext(Dispatchers.IO) {
+            portfolioDao.deleteHolding(ticker.uppercase().trim())
+            updateWidget()
         }
     }
 

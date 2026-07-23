@@ -118,7 +118,7 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
                 }
                 _spreadsheetId.value = newSheetId
                 repository.saveSpreadsheetId(newSheetId)
-                repository.refreshFromGoogleSheets(newSheetId)
+                repository.refreshFromGoogleSheets()
                 _syncState.value = SyncState.Success
             } catch (e: Exception) {
                 Log.e("ViewModel", "Failed to auto-create portfolio sheet", e)
